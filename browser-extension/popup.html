@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PhishGuard AI</title>
+    <style>
+        body { 
+            width: 320px; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #0a0a0a; 
+            color: #ffffff; 
+            text-align: center; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        h2 { 
+            color: #00ffff; 
+            margin-top: 0; 
+            font-family: monospace; 
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 20px;
+        }
+        #url-display { 
+            font-size: 13px; 
+            color: #888; 
+            word-break: break-all; 
+            margin-bottom: 15px;
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #333;
+        }
+        .btn { 
+            background: #00ffff; 
+            color: #000; 
+            padding: 12px 15px; 
+            border: none; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border-radius: 8px; 
+            width: 100%; 
+            font-size: 14px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .btn:hover { 
+            background: #ffffff; 
+            box-shadow: 0 0 10px rgba(0,255,255,0.5);
+        }
+        .loader { 
+            display: none; 
+            margin-top: 15px; 
+            color: #00ffff; 
+            font-family: monospace;
+            animation: pulse 1.5s infinite;
+        }
+        #result { 
+            margin-top: 15px; 
+            padding: 15px; 
+            border-radius: 8px; 
+            display: none; 
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .safe { 
+            background: rgba(0, 255, 100, 0.1); 
+            border: 1px solid #00ff64; 
+            color: #00ff64; 
+        }
+        .danger { 
+            background: rgba(255, 0, 0, 0.1); 
+            border: 1px solid #ff0000; 
+            color: #ff3333; 
+        }
+        .intel {
+            font-size: 12px;
+            margin-top: 8px;
+            border-top: 1px dashed rgba(255,255,255,0.2);
+            padding-top: 8px;
+            text-align: left;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <h2>PHISHGUARD AI</h2>
+    <div id="url-display">Extracting active URL...</div>
+    <button id="scan-btn" class="btn">Scan Page</button>
+    <div id="loader" class="loader">Analyzing URL Features...</div>
+    <div id="result"></div>
+    <script src="popup.js"></script>
+</body>
+</html>

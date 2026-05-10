@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PhishGuard AI — URL Threat Detector</title>
+<meta name="description" content="AI-powered phishing URL detection. Login to start scanning."/>
+
+<!-- React 18 + Babel -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#050b18;--surface:#0d1527;--card:#111e35;--border:rgba(0,200,255,0.12);
+  --cyan:#00c8ff;--cyan-dim:rgba(0,200,255,0.08);--cyan-glow:rgba(0,200,255,0.3);
+  --red:#ff3b6b;--red-dim:rgba(255,59,107,0.1);--red-glow:rgba(255,59,107,0.25);
+  --orange:#f59e0b;--green:#10b981;--purple:#8b5cf6;
+  --text:#e2e8f0;--muted:#64748b;--subtle:#1e293b;
+}
+html,body{width:100%;min-height:100vh;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif}
+#root{min-height:100vh;display:flex;flex-direction:column}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#1e2d4a;border-radius:4px}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scan{0%{top:0}100%{top:100%}}
+@keyframes glow{0%,100%{box-shadow:0 0 20px var(--cyan-glow)}50%{box-shadow:0 0 40px var(--cyan-glow)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:-200%}100%{background-position:200%}}
+.fade-up{animation:fadeUp .4s ease forwards}
+.spin{animation:spin 1s linear infinite}
+.glow-anim{animation:glow 3s ease infinite}
+
+/* GLASS */
+.glass{background:rgba(13,21,39,0.75);backdrop-filter:blur(16px);border:1px solid var(--border)}
+.glass-dark{background:rgba(5,11,24,0.9);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.06)}
+
+/* NAVBAR */
+nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(5,11,24,.85);backdrop-filter:blur(16px);
+  border-bottom:1px solid rgba(0,200,255,.08);
+  padding:12px 24px;display:flex;justify-content:space-between;align-items:center
+}
+.brand{display:flex;align-items:center;gap:10px;cursor:pointer}
+.brand-icon{width:36px;height:36px;background:var(--cyan-dim);border:1px solid var(--cyan-glow);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--cyan);font-size:18px}
+.brand-name{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;letter-spacing:.1em}
+.brand-name span{color:var(--cyan)}
+.nav-links{display:flex;gap:4px;align-items:center}
+.nav-btn{
+  padding:7px 14px;border-radius:8px;border:none;cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
+  letter-spacing:.04em;display:flex;align-items:center;gap:6px;transition:all .2s
+}
+.nav-btn.active{background:var(--cyan);color:#000}
+.nav-btn:not(.active){background:rgba(255,255,255,.05);color:var(--muted)}
+.nav-btn:not(.active):hover{background:rgba(255,255,255,.1);color:var(--text)}
+.nav-btn.danger{color:#f87171}
+.nav-btn.danger:hover{background:rgba(248,113,113,.1)}
+
+/* AUTH PAGE */
+.auth-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px;background:radial-gradient(ellipse at center,rgba(0,200,255,.04) 0%,transparent 70%)}
+.auth-card{width:100%;max-width:420px;padding:40px;border-radius:20px}
+.auth-logo{text-align:center;margin-bottom:28px}
+.auth-logo .icon-ring{width:70px;height:70px;border-radius:50%;border:2px solid var(--cyan);display:inline-flex;align-items:center;justify-content:center;color:var(--cyan);font-size:28px;background:var(--cyan-dim);margin-bottom:14px}
+.auth-logo h1{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:.08em}
+.auth-logo h1 span{color:var(--cyan)}
+.auth-logo p{color:var(--muted);font-size:13px;margin-top:4px}
+.auth-tabs{display:flex;gap:4px;background:var(--subtle);border-radius:10px;padding:4px;margin-bottom:28px}
+.auth-tab{flex:1;padding:8px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;font-family:'Inter',sans-serif}
+.auth-tab.active{background:var(--cyan);color:#000}
+.auth-tab:not(.active){background:transparent;color:var(--muted)}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.form-input{
+  width:100%;background:var(--subtle);border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;padding:11px 14px 11px 40px;color:var(--text);font-size:14px;
+  font-family:'Inter',sans-serif;transition:all .2s
+}
+.form-input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,200,255,.1)}
+.form-input::placeholder{color:var(--muted)}
+.input-wrap{position:relative}
+.input-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px}
+.btn-primary{
+  width:100%;padding:12px;border-radius:10px;border:none;cursor:pointer;
+  background:var(--cyan);color:#000;font-weight:700;font-size:14px;
+  font-family:'Inter',sans-serif;letter-spacing:.04em;text-transform:uppercase;
+  transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px
+}
+.btn-primary:hover{background:#fff;opacity:.9}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;text-align:center}
+.alert.error{background:var(--red-dim);border:1px solid rgba(255,59,107,.3);color:#fca5a5}
+.alert.success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#6ee7b7}
+.auth-switch{text-align:center;margin-top:20px;font-size:13px;color:var(--muted)}
+.auth-switch button{color:var(--cyan);background:none;border:none;cursor:pointer;font-weight:600;font-size:13px}
+.auth-switch button:hover{text-decoration:underline}
+
+/* SCANNER PAGE */
+.page{flex:1;width:100%;max-width:1100px;margin:0 auto;padding:32px 20px}
+.page-header{text-align:center;margin-bottom:32px}
+.page-header h2{font-size:32px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:.06em}
+.page-header h2 span{color:var(--cyan)}
+.page-header p{color:var(--muted);margin-top:8px;font-size:15px}
+
+/* SCAN INPUT */
+.scan-box{border-radius:16px;padding:6px;display:flex;align-items:center;gap:8px;transition:all .3s;margin-bottom:12px}
+.scan-box:focus-within{box-shadow:0 0 0 2px var(--cyan-glow),0 0 30px rgba(0,200,255,.15)}
+.scan-icon{padding:0 8px 0 12px;color:var(--muted);font-size:16px}
+.scan-input{flex:1;background:transparent;border:none;color:var(--text);font-size:16px;padding:14px 4px;font-family:'JetBrains Mono',monospace;outline:none}
+.scan-input::placeholder{color:var(--muted)}
+.scan-btn{
+  padding:12px 28px;border-radius:10px;border:none;cursor:pointer;
+  background:var(--cyan);color:#000;font-weight:700;font-size:13px;
+  font-family:'Inter',sans-serif;letter-spacing:.06em;text-transform:uppercase;
+  transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:8px
+}
+.scan-btn:disabled{opacity:.4;cursor:not-allowed}
+.scan-btn:hover:not(:disabled){background:#fff}
+
+/* LOADING */
+.loading-card{border-radius:20px;padding:48px;text-align:center;position:relative;overflow:hidden}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:var(--cyan);top:0;animation:scan 2.5s linear infinite;box-shadow:0 0 10px var(--cyan)}
+.loading-icon{font-size:48px;color:var(--cyan);margin-bottom:16px}
+.loading-steps{margin-top:16px;display:flex;flex-direction:column;gap:8px;text-align:left;max-width:280px;margin-left:auto;margin-right:auto}
+.loading-step{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.loading-step i{color:var(--cyan);width:16px}
+
+/* RESULT PAGE */
+.verdict-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:700px){.verdict-row{grid-template-columns:1fr}}
+.verdict-card{border-radius:20px;padding:28px;text-align:center;position:relative;overflow:hidden}
+.verdict-card.phish{border-color:rgba(255,59,107,.4)!important;box-shadow:0 0 40px rgba(255,59,107,.1)}
+.verdict-card.safe{border-color:rgba(0,200,255,.4)!important;box-shadow:0 0 40px rgba(0,200,255,.08)}
+.verdict-icon{font-size:52px;margin-bottom:12px}
+.verdict-label{font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;margin-bottom:20px}
+.risk-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:20px}
+.risk-safe{background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.3)}
+.risk-suspicious{background:rgba(245,158,11,.12);color:var(--orange);border:1px solid rgba(245,158,11,.3)}
+.risk-dangerous{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,59,107,.3)}
+.bar-row{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:8px}
+.bar-item label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.bar-item label span:last-child{color:var(--text)}
+.bar-track{height:6px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+.bar-cyan{background:var(--cyan)}
+.bar-red{background:var(--red)}
+
+/* URL VISUALIZATION */
+.url-display{border-radius:12px;padding:16px 18px;margin-bottom:16px;font-family:'JetBrains Mono',monospace;font-size:13px;word-break:break-all;line-height:1.7}
+.url-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;font-family:'Inter',sans-serif;font-weight:600}
+.token-safe{color:var(--cyan)}
+.token-danger{color:var(--red);background:rgba(255,59,107,.12);border-radius:3px;padding:1px 3px;font-weight:700}
+.token-neutral{color:#94a3b8}
+
+/* SECTIONS */
+.section{border-radius:16px;padding:20px;margin-bottom:14px}
+.section-title{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.section-title i{color:var(--cyan)}
+
+/* FEATURES GRID */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.feature-chip{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 12px}
+.feature-chip .fname{font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500}
+.feature-chip .fval{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700}
+.feature-chip .fval.highlight{color:var(--red)}
+.feature-chip .fval.normal{color:var(--cyan)}
+.feature-chip .fdesc{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* SHAP BARS */
+.shap-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);margin-bottom:6px;transition:all .2s}
+.shap-row:hover{border-color:rgba(255,59,107,.3);background:rgba(255,59,107,.04)}
+.shap-name{font-size:13px;color:var(--text)}
+.shap-val-wrap{display:flex;align-items:center;gap:10px}
+.shap-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--red)}
+.shap-mini-bar{width:60px;height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden}
+.shap-mini-fill{height:100%;background:var(--red);border-radius:2px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.chip-blue{background:rgba(0,200,255,.1);color:var(--cyan);border:1px solid rgba(0,200,255,.2)}
+.chip-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,59,107,.2)}
+.chip-green{background:rgba(16,185,129,.1);color:var(--green);border:1px solid rgba(16,185,129,.2)}
+.chip-orange{background:rgba(245,158,11,.1);color:var(--orange);border:1px solid rgba(245,158,11,.2)}
+
+/* INTEL */
+.intel-row{display:flex;align-items:center;justify-content:space-between;padding:12px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+
+/* HISTORY */
+.history-table{width:100%;border-collapse:separate;border-spacing:0 4px}
+.history-table th{padding:8px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;border-bottom:1px solid rgba(255,255,255,.06)}
+.history-table td{padding:12px;background:rgba(255,255,255,.02);font-size:13px;vertical-align:middle}
+.history-table td:first-child{border-radius:8px 0 0 8px;border-left:1px solid rgba(255,255,255,.05)}
+.history-table td:last-child{border-radius:0 8px 8px 0;border-right:1px solid rgba(255,255,255,.05)}
+.history-table tr:hover td{background:rgba(255,255,255,.04)}
+.url-cell{font-family:'JetBrains Mono',monospace;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* BG BLOBS */
+.blob{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+.blob-1{width:600px;height:600px;background:rgba(0,200,255,.04);top:-200px;left:-200px}
+.blob-2{width:600px;height:600px;background:rgba(255,59,107,.04);bottom:-200px;right:-200px}
+.content{position:relative;z-index:1;flex:1;display:flex;flex-direction:column}
+
+/* ERROR */
+.error-bar{background:var(--red-dim);border:1px solid rgba(255,59,107,.3);color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:14px}
+
+footer{text-align:center;padding:20px;color:var(--muted);font-size:11px;font-family:'JetBrains Mono',monospace;border-top:1px solid rgba(255,255,255,.04)}
+
+/* WELCOME HERO (shown before auth) */
+.hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px;gap:0}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:99px;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.2);color:var(--cyan);font-size:12px;font-weight:600;margin-bottom:28px;letter-spacing:.04em}
+.hero h1{font-size:clamp(36px,6vw,68px);font-weight:900;line-height:1.1;font-family:'JetBrains Mono',monospace;letter-spacing:-.02em;margin-bottom:16px}
+.hero h1 .c{color:var(--cyan)}
+.hero p{font-size:clamp(15px,2.5vw,18px);color:var(--muted);max-width:580px;line-height:1.6;margin-bottom:36px}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.cta-primary{padding:14px 32px;background:var(--cyan);color:#000;font-weight:700;font-size:14px;border-radius:12px;border:none;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;transition:all .2s;font-family:'Inter',sans-serif}
+.cta-primary:hover{background:#fff;transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,200,255,.3)}
+.cta-secondary{padding:14px 32px;background:rgba(255,255,255,.06);color:var(--text);font-size:14px;font-weight:600;border-radius:12px;border:1px solid rgba(255,255,255,.1);cursor:pointer;display:flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;transition:all .2s}
+.cta-secondary:hover{background:rgba(255,255,255,.1);transform:translateY(-2px)}
+.features-pills{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:40px}
+.pill{padding:8px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.pill i{color:var(--cyan);font-size:11px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState, useEffect, useRef} = React;
+const API = "";
+
+/* ─── FEATURE METADATA ─────────────────────────────────────────────────────── */
+const FEATURE_META = {
+  url_length:              { label:"URL Length",            desc:"Character count of full URL",          icon:"fa-ruler" },
+  num_dots:                { label:"Dot Count",             desc:"Number of '.' in URL",                 icon:"fa-circle-dot" },
+  num_hyphens:             { label:"Hyphen Count",          desc:"Number of '-' characters",             icon:"fa-minus" },
+  num_at_symbols:          { label:"@ Symbols",             desc:"@ usually redirects to another host",  icon:"fa-at" },
+  num_slashes:             { label:"Slash Count",           desc:"Path depth indicator",                 icon:"fa-slash" },
+  num_question_marks:      { label:"Query Params (?)",      desc:"Number of query strings",              icon:"fa-question" },
+  num_equal_signs:         { label:"Equal Signs (=)",       desc:"Key=value pairs in URL",               icon:"fa-equals" },
+  num_underscores:         { label:"Underscores",           desc:"Number of '_' characters",             icon:"fa-underline" },
+  has_ip_address:          { label:"IP Address Used",       desc:"IP instead of domain is suspicious",   icon:"fa-network-wired" },
+  has_https:               { label:"HTTPS Protocol",        desc:"Secure connection flag",               icon:"fa-lock" },
+  domain_length:           { label:"Domain Length",         desc:"Character count of domain",            icon:"fa-globe" },
+  num_subdomains:          { label:"Subdomain Count",       desc:"Number of subdomain levels",           icon:"fa-sitemap" },
+  path_length:             { label:"Path Length",           desc:"Character count of URL path",          icon:"fa-road" },
+  query_length:            { label:"Query String Length",   desc:"Character count of query params",      icon:"fa-magnifying-glass" },
+  has_port:                { label:"Non-Standard Port",     desc:"Port specified in URL (suspicious)",   icon:"fa-plug" },
+  digit_to_letter_ratio:   { label:"Digit/Letter Ratio",   desc:"High ratio = potentially obfuscated",  icon:"fa-percent" },
+  num_special_chars:       { label:"Special Char Count",   desc:"Unusual characters in URL",            icon:"fa-star" },
+  url_entropy:             { label:"URL Entropy",           desc:"Shannon entropy (randomness measure)", icon:"fa-chart-line" },
+  num_suspicious_keywords: { label:"Suspicious Keywords",  desc:"Count of phishing-related words",      icon:"fa-triangle-exclamation" },
+  has_double_slash_redirect:{ label:"Double-Slash Redirect",desc:"'//' after scheme indicates redirect", icon:"fa-arrow-right-arrow-left" },
+  tld_is_risky:            { label:"Risky TLD",             desc:".xyz .tk .ml etc. are high-risk",      icon:"fa-flag" },
+  num_digits:              { label:"Digit Count",           desc:"Total numeric characters",             icon:"fa-hashtag" },
+  num_letters:             { label:"Letter Count",          desc:"Total alphabetic characters",          icon:"fa-a" },
+  url_depth:               { label:"URL Depth",             desc:"Number of path segments",              icon:"fa-layer-group" },
+  has_dns_record:          { label:"DNS Record Exists",     desc:"Valid domain resolves in DNS",         icon:"fa-server" },
+};
+
+const SUSPICIOUS_WORDS = ["login","secure","verify","update","bank","account","signin","auth","confirm","password","paypal","free","lucky","service","bonus","ebay"];
+const RISKY_TLDS = [".tk",".ml",".ga",".cf",".gq",".xyz",".top",".club",".online",".site",".icu",".pw",".cc",".su"];
+
+function tokenizeUrl(url) {
+  const lc = url.toLowerCase();
+  const tokens = [];
+  let i = 0;
+  const all = [...SUSPICIOUS_WORDS, ...RISKY_TLDS];
+  while(i < url.length) {
+    let matched = false;
+    for(const kw of all) {
+      if(lc.startsWith(kw, i)) {
+        tokens.push({text: url.slice(i, i+kw.length), type:'danger'});
+        i += kw.length; matched = true; break;
+      }
+    }
+    if(!matched) {
+      const last = tokens[tokens.length-1];
+      const isScheme = i < 10; // mark http/https differently
+      if(last && last.type === 'neutral') last.text += url[i];
+      else tokens.push({text: url[i], type: 'neutral'});
+      i++;
+    }
+  }
+  return tokens;
+}
+
+function riskStyle(score) {
+  if(score < 30) return {cls:'risk-safe',    text:'SAFE',      icon:'fa-check-circle'};
+  if(score < 70) return {cls:'risk-suspicious',text:'SUSPICIOUS',icon:'fa-exclamation-circle'};
+  return               {cls:'risk-dangerous', text:'DANGEROUS', icon:'fa-skull-crossbones'};
+}
+
+/* ─── COMPONENTS ────────────────────────────────────────────────────────── */
+
+function Navbar({view, setView, token, onLogout}) {
+  return (
+    <nav>
+      <div className="brand" onClick={() => token ? setView('scanner') : setView('home')}>
+        <div className="brand-icon"><i className="fa fa-shield-halved"></i></div>
+        <div className="brand-name">PHISH<span>GUARD</span></div>
+      </div>
+      <div className="nav-links">
+        {token ? (
+          <>
+            <button className={`nav-btn ${view==='scanner'?'active':''}`} onClick={() => setView('scanner')}>
+              <i className="fa fa-magnifying-glass"></i><span className="hidden-sm">Scanner</span>
+            </button>
+            <button className={`nav-btn ${view==='output'?'active':''}`} onClick={() => setView('output')}>
+              <i className="fa fa-chart-pie"></i><span className="hidden-sm">Output</span>
+            </button>
+            <button className={`nav-btn ${view==='history'?'active':''}`} onClick={() => setView('history')}>
+              <i className="fa fa-clock-rotate-left"></i><span className="hidden-sm">History</span>
+            </button>
+            <button className="nav-btn danger" onClick={onLogout}>
+              <i className="fa fa-right-from-bracket"></i><span className="hidden-sm">Logout</span>
+            </button>
+          </>
+        ) : (
+          <button className={`nav-btn ${view==='auth'?'active':''}`} onClick={() => setView('auth')}>
+            <i className="fa fa-user-shield"></i><span className="hidden-sm">Login / Register</span>
+          </button>
+        )}
+      </div>
+    </nav>
+  );
+}
+
+/* HERO / LANDING */
+function HeroPage({setView}) {
+  return (
+    <div className="hero fade-up">
+      <div className="hero-badge"><i className="fa fa-shield-halved"></i> AI-Powered URL Protection</div>
+      <h1>Detect Phishing<br/><span className="c">Before It Strikes</span></h1>
+      <p>Advanced ensemble machine learning — Random Forest, XGBoost &amp; LightGBM — with SHAP explainability to analyze 25 URL features in milliseconds.</p>
+      <div className="hero-cta">
+        <button className="cta-primary" onClick={() => setView('auth')}><i className="fa fa-right-to-bracket"></i> Start Scanning — It's Free</button>
+        <button className="cta-secondary" onClick={() => setView('auth')}><i className="fa fa-info-circle"></i> Learn More</button>
+      </div>
+      <div className="features-pills">
+        {[
+          ['fa-robot','Ensemble AI (RF+XGB+LGB)'],
+          ['fa-dna','25 URL Features'],
+          ['fa-chart-bar','SHAP Explainability'],
+          ['fa-database','SQLite Scan History'],
+          ['fa-cloud','Google Safe Browsing'],
+          ['fa-puzzle-piece','Browser Extension'],
+        ].map(([icon, label])=>(
+          <div className="pill" key={label}><i className={`fa ${icon}`}></i>{label}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* AUTH PAGE */
+function AuthPage({setToken, setView}) {
+  const [tab, setTab] = useState('login');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [msg, setMsg] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const submit = async(e) => {
+    e.preventDefault(); setMsg(null); setLoading(true);
+    try {
+      if(tab === 'register') {
+        const r = await fetch(`${API}/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.detail || 'Registration failed');
+        setMsg({type:'success', text:'Account created! Please sign in.'});
+        setTab('login');
+      } else {
+        const form = new URLSearchParams({username, password});
+        const r = await fetch(`${API}/login`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.detail || 'Login failed');
+        localStorage.setItem('pg_token', d.access_token);
+        localStorage.setItem('pg_user', username);
+        setToken(d.access_token);
+        setView('scanner');
+      }
+    } catch(err) { setMsg({type:'error', text: err.message}); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="auth-wrap fade-up">
+      <div className="glass auth-card">
+        <div className="auth-logo">
+          <div className="icon-ring"><i className="fa fa-shield-halved"></i></div>
+          <h1>PHISH<span>GUARD</span></h1>
+          <p>AI URL Threat Detection System</p>
+        </div>
+        <div className="auth-tabs">
+          <button className={`auth-tab ${tab==='login'?'active':''}`} onClick={()=>{setTab('login');setMsg(null)}}>Sign In</button>
+          <button className={`auth-tab ${tab==='register'?'active':''}`} onClick={()=>{setTab('register');setMsg(null)}}>Create Account</button>
+        </div>
+        {msg && <div className={`alert ${msg.type}`}>{msg.text}</div>}
+        <form onSubmit={submit}>
+          <div className="form-group">
+            <label className="form-label">Username</label>
+            <div className="input-wrap">
+              <i className="fa fa-user input-icon"></i>
+              <input required className="form-input" placeholder="Enter your username" value={username} onChange={e=>setUsername(e.target.value)}/>
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <div className="input-wrap">
+              <i className="fa fa-lock input-icon"></i>
+              <input required type="password" className="form-input" placeholder="Enter your password" value={password} onChange={e=>setPassword(e.target.value)}/>
+            </div>
+          </div>
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? <><i className="fa fa-spinner spin"></i>Processing...</> : tab==='login' ? <><i className="fa fa-right-to-bracket"></i>Sign In</> : <><i className="fa fa-user-plus"></i>Create Account</>}
+          </button>
+        </form>
+        <div className="auth-switch">
+          {tab==='login' ? "Don't have an account? " : "Already have an account? "}
+          <button onClick={()=>{setTab(tab==='login'?'register':'login');setMsg(null)}}>
+            {tab==='login' ? 'Register now' : 'Sign in'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* SCANNER */
+function ScannerPage({token, onResult}) {
+  const [url, setUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [step, setStep] = useState(0);
+
+  const steps = ['Parsing URL structure...','Extracting 25 features...','Running ensemble models...','Generating SHAP explanation...','Querying threat intelligence...'];
+
+  const analyze = async(e) => {
+    e.preventDefault();
+    if(!url.trim()) return;
+    setLoading(true); setError(''); setResult(null); setStep(0);
+
+    const interval = setInterval(()=> setStep(s => Math.min(s+1, steps.length-1)), 600);
+    try {
+      const headers = {'Content-Type':'application/json'};
+      if(token) headers['Authorization'] = `Bearer ${token}`;
+      const r = await fetch(`${API}/predict`,{method:'POST',headers,body:JSON.stringify({url:url.trim()})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.detail || 'Analysis failed');
+      onResult(d);
+    } catch(err) { setError(err.message); }
+    clearInterval(interval);
+    setLoading(false);
+  };
+
+  return (
+    <div className="page fade-up">
+      <div className="page-header">
+        <h2><span>URL</span> Threat Scanner</h2>
+        <p>Paste any URL below — our AI will analyze 25 features and deliver an instant verdict.</p>
+      </div>
+
+      <form onSubmit={analyze}>
+        <div className="glass scan-box">
+          <span className="scan-icon"><i className="fa fa-link"></i></span>
+          <input className="scan-input" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://example.com/login?verify=account"/>
+          <button className="scan-btn" type="submit" disabled={loading||!url.trim()}>
+            {loading ? <><i className="fa fa-spinner spin"></i>Scanning</> : <><i className="fa fa-radar"></i>Analyze</>}
+          </button>
+        </div>
+      </form>
+
+      {error && <div className="error-bar"><i className="fa fa-triangle-exclamation"></i>{error}</div>}
+
+      {loading && (
+        <div className="glass loading-card">
+          <div className="scan-line"></div>
+          <div className="loading-icon"><i className="fa fa-microchip spin"></i></div>
+          <div style={{fontSize:15,fontWeight:600,marginBottom:4}}>Analyzing URL Intelligence</div>
+          <div style={{color:'var(--muted)',fontSize:13}}>Running ensemble models...</div>
+          <div className="loading-steps">
+            {steps.map((s,i)=>(
+              <div className="loading-step" key={i}>
+                <i className={i<=step ? 'fa fa-check-circle' : 'fa fa-circle'} style={{color:i<=step?'var(--cyan)':'var(--muted)'}}></i>
+                <span style={{color: i<=step?'var(--text)':'var(--muted)'}}>{s}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OutputPage({result}) {
+  if (!result) {
+    return (
+      <div className="page fade-up">
+        <div className="page-header">
+          <h2>Analysis <span>Output</span></h2>
+          <p>No analysis results available yet. Please scan a URL first.</p>
+        </div>
+        <div style={{textAlign:'center',padding:60,color:'var(--muted)'}} className="glass">
+          <i className="fa fa-chart-pie" style={{fontSize:36,marginBottom:16,display:'block'}}></i>
+          Go to the Scanner and analyze a URL!
+        </div>
+      </div>
+    );
+  }
+
+  const isPhish = result?.is_phishing;
+  const risk = result ? riskStyle(result.risk_score) : null;
+
+  return (
+    <div className="page fade-up">
+      <div className="page-header">
+        <h2>Analysis <span>Output</span></h2>
+        <p>Detailed view of the scanned URL properties and threats.</p>
+      </div>
+      <ResultPanel result={result} isPhish={isPhish} risk={risk}/>
+    </div>
+  );
+}
+
+function ResultPanel({result, isPhish, risk}) {
+  const tokens = tokenizeUrl(result.url);
+  const feats = result.features || {};
+  const maxShap = Math.max(...(result.top_suspicious||[]).map(s=>Math.abs(s.shap_value)), 0.001);
+
+  // Flags for feature highlights
+  const isHighlight = (key, val) => {
+    if(key==='has_ip_address' && val===1) return true;
+    if(key==='has_https' && val===0) return true;
+    if(key==='tld_is_risky' && val===1) return true;
+    if(key==='has_port' && val===1) return true;
+    if(key==='has_double_slash_redirect' && val===1) return true;
+    if(key==='num_suspicious_keywords' && val>0) return true;
+    if(key==='has_at_symbols' && val>0) return true;
+    if(key==='url_entropy' && val>4.5) return true;
+    return false;
+  };
+
+  return (
+    <div className="fade-up">
+      {/* URL Visualization */}
+      <div className="glass-dark url-display" style={{marginBottom:14}}>
+        <div className="url-label">Analyzed URL — suspicious tokens highlighted</div>
+        {tokens.map((t,i)=>(
+          <span key={i} className={t.type==='danger'?'token-danger':'token-neutral'}>{t.text}</span>
+        ))}
+      </div>
+
+      {/* Verdict Row */}
+      <div className="verdict-row">
+        {/* Verdict Card */}
+        <div className={`glass verdict-card ${isPhish?'phish':'safe'}`}>
+          <div className="verdict-icon">
+            {isPhish ? <i className="fa fa-skull-crossbones" style={{color:'var(--red)'}}></i>
+                     : <i className="fa fa-shield-check" style={{color:'var(--cyan)'}}></i>}
+          </div>
+          <div className="verdict-label" style={{color: isPhish?'var(--red)':'var(--cyan)'}}>
+            {result.prediction}
+          </div>
+          <div className={`risk-badge ${risk.cls}`}><i className={`fa ${risk.icon}`}></i>{risk.text}</div>
+          <div className="bar-row">
+            <div className="bar-item">
+              <label><span>Risk Score</span><span>{result.risk_score}%</span></label>
+              <div className="bar-track"><div className={`bar-fill ${isPhish?'bar-red':'bar-cyan'}`} style={{width:`${result.risk_score}%`}}></div></div>
+            </div>
+            <div className="bar-item">
+              <label><span>Model Confidence</span><span>{result.confidence_score}%</span></label>
+              <div className="bar-track"><div className={`bar-fill ${isPhish?'bar-red':'bar-cyan'}`} style={{width:`${result.confidence_score}%`,opacity:.7}}></div></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Threat Intel + Quick Stats */}
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          {/* Threat Intel */}
+          {result.threat_intel && (
+            <div className="glass section" style={{marginBottom:0}}>
+              <div className="section-title"><i className="fa fa-cloud-bolt"></i>Real-Time Threat Intelligence</div>
+              <div className="intel-row">
+                <div>
+                  <div style={{fontSize:13,fontWeight:600}}>{result.threat_intel.source}</div>
+                  <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{result.threat_intel.details}</div>
+                </div>
+                <span className={result.threat_intel.safe ? 'chip chip-green' : 'chip chip-red'}>
+                  <i className={result.threat_intel.safe ? 'fa fa-check' : 'fa fa-xmark'}></i>
+                  {result.threat_intel.safe ? 'Clean' : 'THREAT'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Domain Age & SQL Injection */}
+          {(result.domain_age_days !== undefined || result.sql_injection) && (
+            <div className="glass section" style={{marginBottom:0,marginTop:12}}>
+              <div className="section-title"><i className="fa fa-server"></i>Domain & Security Analysis</div>
+              <div style={{display:'flex', flexDirection:'column', gap:10}}>
+                
+                {/* Domain Age Row */}
+                {result.domain_age_days !== undefined && (
+                  <div className="intel-row" style={{padding:8, border:'none', background:'rgba(255,255,255,.02)'}}>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:600}}>Domain Age</div>
+                      <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>WHOIS registered age</div>
+                    </div>
+                    {result.domain_age_days === null ? (
+                       <span className="chip" style={{color:'var(--muted)'}}>Unknown</span>
+                    ) : result.domain_age_days < 30 ? (
+                       <span className="chip chip-red"><i className="fa fa-triangle-exclamation"></i>Very Young ({result.domain_age_days} days)</span>
+                    ) : result.domain_age_days < 180 ? (
+                       <span className="chip chip-orange"><i className="fa fa-triangle-exclamation"></i>Recent ({result.domain_age_days} days)</span>
+                    ) : (
+                       <span className="chip chip-blue"><i className="fa fa-check"></i>Established ({Math.round(result.domain_age_days/36.5)/10} yrs)</span>
+                    )}
+                  </div>
+                )}
+
+                {/* SQL Injection Row */}
+                {result.sql_injection && (
+                  <div className="intel-row" style={{padding:8, border:'none', background:'rgba(255,255,255,.02)'}}>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:600}}>SQL Injection Analysis</div>
+                      <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{result.sql_injection.details}</div>
+                      {result.sql_injection.detected && (
+                         <div style={{fontSize:10,color:'var(--red)',marginTop:4, fontFamily:"'JetBrains Mono',monospace"}}>Matches: {result.sql_injection.matches.join(', ')}</div>
+                      )}
+                    </div>
+                    {result.sql_injection.detected ? (
+                       <span className="chip chip-red"><i className="fa fa-triangle-exclamation"></i>DETECTED</span>
+                    ) : (
+                       <span className="chip chip-green"><i className="fa fa-check"></i>Clean</span>
+                    )}
+                  </div>
+                )}
+                
+              </div>
+            </div>
+          )}
+
+          {/* Quick Feature Flags */}
+          <div className="glass section" style={{marginBottom:0,flex:1}}>
+            <div className="section-title"><i className="fa fa-flag"></i>Quick Flag Summary</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              <span className={`chip ${feats.has_https?'chip-green':'chip-red'}`}>
+                <i className={feats.has_https?'fa fa-lock':'fa fa-lock-open'}></i>
+                {feats.has_https?'HTTPS':'HTTP Only'}
+              </span>
+              <span className={`chip ${feats.has_ip_address?'chip-red':'chip-blue'}`}>
+                <i className="fa fa-network-wired"></i>
+                {feats.has_ip_address?'IP Address!':'Domain Name'}
+              </span>
+              <span className={`chip ${feats.tld_is_risky?'chip-red':'chip-blue'}`}>
+                <i className="fa fa-flag"></i>
+                {feats.tld_is_risky?'Risky TLD!':'Normal TLD'}
+              </span>
+              <span className={`chip ${feats.has_port?'chip-orange':'chip-blue'}`}>
+                <i className="fa fa-plug"></i>
+                {feats.has_port?'Non-Std Port':'Default Port'}
+              </span>
+              <span className={`chip ${feats.num_suspicious_keywords>0?'chip-red':'chip-blue'}`}>
+                <i className="fa fa-triangle-exclamation"></i>
+                {feats.num_suspicious_keywords} Susp. Keywords
+              </span>
+              <span className={`chip ${feats.has_double_slash_redirect?'chip-orange':'chip-blue'}`}>
+                <i className="fa fa-arrow-right-arrow-left"></i>
+                {feats.has_double_slash_redirect?'Double // Redirect':'No Redirect'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* All 25 EXTRACTED FEATURES */}
+      <div className="glass section">
+        <div className="section-title"><i className="fa fa-table-cells"></i>All 25 Extracted Features — Checked During Analysis</div>
+        <div className="features-grid">
+          {FEATURE_NAMES_ORDERED.map(key => {
+            const meta = FEATURE_META[key] || {label:key, desc:'', icon:'fa-circle'};
+            const val = feats[key];
+            const highlight = isHighlight(key, val);
+            let display = val;
+            if(typeof val === 'number' && !Number.isInteger(val)) display = val.toFixed(3);
+            if(key==='has_https'||key==='has_ip_address'||key==='has_port'||key==='tld_is_risky'||key==='has_double_slash_redirect'||key==='has_dns_record') {
+              display = val===1 ? 'YES' : 'NO';
+            }
+            return (
+              <div className="feature-chip" key={key} style={highlight ? {borderColor:'rgba(255,59,107,.35)',background:'rgba(255,59,107,.05)'} : {}}>
+                <div className="fname"><i className={`fa ${meta.icon}`} style={{marginRight:4,color:'var(--cyan)',fontSize:10}}></i>{meta.label}</div>
+                <div className={`fval ${highlight?'highlight':'normal'}`}>{String(display)}</div>
+                <div className="fdesc">{meta.desc}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* SHAP Indicators */}
+      {result.top_suspicious && result.top_suspicious.length > 0 && (
+        <div className="glass section">
+          <div className="section-title"><i className="fa fa-chart-bar"></i>SHAP Feature Importance — Top Phishing Indicators</div>
+          {result.top_suspicious.map((f,i)=>(
+            <div className="shap-row" key={i}>
+              <div>
+                <span className="shap-name">{(FEATURE_META[f.feature]?.label)||f.feature.replace(/_/g,' ')}</span>
+                <span className="chip chip-blue" style={{marginLeft:8,fontSize:10}}>val: {f.value}</span>
+              </div>
+              <div className="shap-val-wrap">
+                <div className="shap-mini-bar"><div className="shap-mini-fill" style={{width:`${Math.abs(f.shap_value)/maxShap*100}%`}}></div></div>
+                <span className="shap-val">+{f.shap_value.toFixed(4)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const FEATURE_NAMES_ORDERED = Object.keys(FEATURE_META);
+
+/* HISTORY PAGE */
+function HistoryPage({token}) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(()=>{
+    fetch(`${API}/history`,{headers:{Authorization:`Bearer ${token}`}})
+      .then(r=>r.json()).then(d=>{
+        if(Array.isArray(d)) setHistory(d);
+        else setError(d.detail||'Failed to load history');
+      }).catch(()=>setError('Network error loading history'))
+      .finally(()=>setLoading(false));
+  },[token]);
+
+  if(loading) return <div style={{textAlign:'center',padding:60,color:'var(--cyan)',fontSize:18}}><i className="fa fa-spinner spin"></i></div>;
+  if(error) return <div className="error-bar" style={{maxWidth:500,margin:'60px auto'}}><i className="fa fa-triangle-exclamation"></i>{error}</div>;
+
+  return (
+    <div className="page fade-up">
+      <div className="page-header">
+        <h2>Scan <span>History</span></h2>
+        <p>All URLs you have scanned while logged in are recorded here.</p>
+      </div>
+      <div className="glass" style={{borderRadius:16,overflow:'hidden'}}>
+        {history.length === 0 ? (
+          <div style={{textAlign:'center',padding:60,color:'var(--muted)'}}>
+            <i className="fa fa-database" style={{fontSize:36,marginBottom:16,display:'block'}}></i>
+            No scans yet. Go to the Scanner and analyze a URL!
+          </div>
+        ) : (
+          <table className="history-table">
+            <thead><tr>
+              <th>URL</th><th>Verdict</th><th>Risk Score</th><th>Scanned</th>
+            </tr></thead>
+            <tbody>
+              {history.map(s=>{
+                const isP = s.prediction==='Phishing';
+                return (
+                  <tr key={s.id}>
+                    <td className="url-cell" title={s.url}><i className="fa fa-link" style={{color:'var(--muted)',marginRight:6,fontSize:11}}></i>{s.url}</td>
+                    <td><span className={`chip ${isP?'chip-red':'chip-green'}`}>
+                      <i className={isP?'fa fa-skull':'fa fa-shield-check'}></i>{s.prediction}
+                    </span></td>
+                    <td>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <div className="bar-track" style={{width:70}}><div className="bar-fill" style={{width:`${s.risk_score}%`,background:isP?'var(--red)':'var(--cyan)'}}></div></div>
+                        <span className="mono" style={{fontSize:12,color:isP?'var(--red)':'var(--cyan)'}}>{s.risk_score}%</span>
+                      </div>
+                    </td>
+                    <td style={{color:'var(--muted)',fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>{new Date(s.timestamp).toLocaleString()}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── ROOT APP ──────────────────────────────────────────────────────────── */
+function App() {
+  const [token, setToken] = useState(()=>localStorage.getItem('pg_token')||null);
+  // Default to 'auth' if no token, otherwise 'scanner'
+  const [view, setView] = useState(()=> localStorage.getItem('pg_token') ? 'scanner' : 'auth');
+
+  const logout = () => {
+    localStorage.removeItem('pg_token');
+    localStorage.removeItem('pg_user');
+    setToken(null);
+    setView('auth');
+  };
+
+  useEffect(() => {
+     // If token is lost/invalid, go to auth
+     if(!token && view !== 'auth') setView('auth');
+  }, [token, view]);
+
+  const [scanResult, setScanResult] = useState(null);
+
+  const handleResult = (d) => {
+    setScanResult(d);
+    setView('output');
+  };
+
+  return (
+    <div>
+      <div className="blob blob-1"></div>
+      <div className="blob blob-2"></div>
+      <div className="content">
+        <Navbar view={view} setView={setView} token={token} onLogout={logout}/>
+        {view==='home'    && <HeroPage setView={setView}/>}
+        {view==='auth'    && <AuthPage setToken={setToken} setView={setView}/>}
+        {view==='scanner' && <ScannerPage token={token} onResult={handleResult}/>}
+        {view==='output'  && <OutputPage result={scanResult}/>}
+        {view==='history' && <HistoryPage token={token}/>}
+        <footer>PhishGuard AI v2.0 &mdash; RF + XGBoost + LightGBM Ensemble &mdash; 25 Feature Analysis</footer>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
